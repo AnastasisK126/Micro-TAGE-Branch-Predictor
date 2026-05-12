@@ -3,6 +3,12 @@
 
 bimodal_t bimodal_table[BIMODAL_ENTRIES];
 
+bank_t T0[ENTRIES_PER_BANK];
+bank_t T1[ENTRIES_PER_BANK];
+bank_t T2[ENTRIES_PER_BANK];
+bank_t T3[ENTRIES_PER_BANK];
+
+// Initializes bimodal table
 void bimodal_init() {
 
     for(int i = 0; i < BIMODAL_ENTRIES; i++) {
@@ -11,12 +17,15 @@ void bimodal_init() {
     }
 }
 
+// Returns Bimodal table prediction
 int bimodal_predict(uint64_t pc) {
     int index = pc % BIMODAL_ENTRIES;
 
     return bimodal_table[index].prediction;
 }
 
+// Updates the table after the branch is evaluated,
+// It is known if the prediction was correct or not
 void bimodal_update(uint64_t pc, uint8_t taken) {
     int index = pc % BIMODAL_ENTRIES;
 
@@ -35,6 +44,15 @@ void bimodal_update(uint64_t pc, uint8_t taken) {
         }
     }
 
+}
+
+// Initialized tagged tables
+void bank_init(bank_t table) {
+    for (int i = 0;  i < ENTRIES_PER_BANK; i++) {
+        table.cnt_bits = 0;
+        table.tag = 0;
+        table.useful_bits = 0;
+    }
 }
 
 void TAGE::initialize_branch_predictor() {
