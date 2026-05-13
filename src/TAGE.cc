@@ -47,16 +47,45 @@ void bimodal_update(uint64_t pc, uint8_t taken) {
 }
 
 // Initialized tagged tables
-void bank_init(bank_t table) {
+void bank_init(bank_t *table) {
     for (int i = 0;  i < ENTRIES_PER_BANK; i++) {
-        table.cnt_bits = 0;
-        table.tag = 0;
-        table.useful_bits = 0;
+        table[i].cnt_bits = 0;
+        table[i].tag = 0;
+        table[i].useful_bits = 0;
     }
 }
 
 void TAGE::initialize_branch_predictor() {
     bimodal_init();
+    bank_init(T0);
+    bank_init(T1);
+    bank_init(T2);
+    bank_init(T3);
+}
+
+int fold_history() {
+    
+}
+
+int find_index(uint64_t pc, uint64_t ghr[3], int index_bank); {
+    int index = 0;
+    int mask = 0x3FF;
+    
+    switch (index_bank) {
+    case 0:
+        // index PC[9:0] ^ PC[19:10] ^ GHR[9:0]
+        index = (pc & mask) ^ ((pc >> 10) & mask) ^ (ghr[3] & mask);        
+        break;
+    case 1:
+    
+        break;
+    case 2:
+        break;
+    case 3:
+        break;
+    default:
+        break;
+    }
 }
 
 uint8_t TAGE::predict_branch(uint64_t ip) {
@@ -66,6 +95,14 @@ uint8_t TAGE::predict_branch(uint64_t ip) {
 void TAGE::last_branch_result(uint64_t ip, uint64_t branch_target, uint8_t taken, uint8_t branch_type) {
     if (branch_type == BRANCH_CONDITIONAL) {
         bimodal_update(ip, taken);
+        
+        // Make space for the new taken bit.        
+        ghr[2] = (ghr[2] << 1) | (ghr[1] >> 63);
+        ghr[1] = (ghr[1] << 1) | (ghr[0] >> 63);
+        ghr[0] = (ghr[0] << 1) | taken;
+        ghr[2] &= 0x7; 
+        
+        phr = ((phr << 1) ^ (ip & 0xFFFF)) & 0xFFFF;
     }
 }
 

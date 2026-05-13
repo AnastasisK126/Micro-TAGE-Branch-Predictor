@@ -23,7 +23,7 @@
 
 #define ENTRIES_PER_BANK 1024
 
-const int geo_lengths[NUM_TABLES] = {5, 15, 44, 130};
+const int geo_lengths[NUM_TABLES] = {130, 44, 15, 5};
 
 class O3_CPU;
 
