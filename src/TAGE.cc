@@ -1,15 +1,8 @@
 #include "TAGE.h"
 #include "instruction.h"
 
-bimodal_t bimodal_table[BIMODAL_ENTRIES];
-
-bank_t T0[ENTRIES_PER_BANK];
-bank_t T1[ENTRIES_PER_BANK];
-bank_t T2[ENTRIES_PER_BANK];
-bank_t T3[ENTRIES_PER_BANK];
-
 // Initializes bimodal table
-void bimodal_init() {
+void TAGE::bimodal_init() {
 
     for(int i = 0; i < BIMODAL_ENTRIES; i++) {
         bimodal_table[i].cnt_value = WEAKLY_T;
@@ -18,7 +11,7 @@ void bimodal_init() {
 }
 
 // Returns Bimodal table prediction
-int bimodal_predict(uint64_t pc) {
+int TAGE::bimodal_predict(uint64_t pc) {
     int index = pc % BIMODAL_ENTRIES;
 
     return bimodal_table[index].prediction;
@@ -26,7 +19,7 @@ int bimodal_predict(uint64_t pc) {
 
 // Updates the table after the branch is evaluated,
 // It is known if the prediction was correct or not
-void bimodal_update(uint64_t pc, uint8_t taken) {
+void TAGE::bimodal_update(uint64_t pc, uint8_t taken) {
     int index = pc % BIMODAL_ENTRIES;
 
     // The prediction was correct
@@ -47,7 +40,7 @@ void bimodal_update(uint64_t pc, uint8_t taken) {
 }
 
 // Initialized tagged tables
-void bank_init(bank_t *table) {
+void TAGE::bank_init(bank_t *table) {
     for (int i = 0;  i < ENTRIES_PER_BANK; i++) {
         table[i].cnt_bits = 0;
         table[i].tag = 0;
@@ -55,37 +48,72 @@ void bank_init(bank_t *table) {
     }
 }
 
+// Folds 20 bits of PC to 10 bits
+// PC[9:0] ^ PC[19:10]
+u_int64_t TAGE::PC_hash(u_int64_t pc) {
+    u_int64_t mask = 0x3FF; // 10 lsb are 1
+
+    return ((pc & mask) ^ ((pc >> 10) & mask)); 
+}
+
+// folds length bits of ghr to 10 bits
+bitset<131> TAGE::fold_ghr(int length) {
+    
+    bitset<131> mask = 0x3FF; // 10 lsb are 1
+    bitset<131> folded_history;
+    bitset<131> temp_ghr = ghr;
+    
+    int times_fold = length / 10;
+
+    for (int i=0; i < times_fold; i++) {
+        folded_history ^= (temp_ghr & mask);
+        temp_ghr >> 10;  
+    }
+
+    return folded_history;
+}
+
+// Finds the index of each bank to be accessed.
+bitset<131> TAGE::find_index(uint64_t pc, int index_bank) {
+
+    bitset<131> pc_hash = (bitset<131>) PC_hash(pc);
+    bitset<131> folded_history = fold_ghr(geo_lengths[index_bank]);    
+    
+    return (pc_hash ^ folded_history); 
+}
+
+bitset<9> TAGE::calc_tag(uint64_t pc, int bank_index) {
+    bitset<131> temp_ghr = ghr;
+    uint16_t temp_phr = phr;
+    bitset<131> folded_ghr;
+
+    // mask 0x1FF 9 lsb are 1 
+    // folds 18 bits of pc to 9 bits
+    uint64_t folded_pc = (pc & 0x1FF) ^ ((pc >> 9) & 0x1FF);
+
+    // fold ghr to 9 bits
+    int times_fold = geo_lengths[bank_index] / 9;
+    for (int i=0; i < times_fold; i++) {
+        folded_ghr ^= (temp_ghr & (bitset<131>) 0x1FF);
+        temp_ghr >> 9;  
+    }
+
+    uint16_t folded_phr = (temp_phr & 0x1FF) ^ ((temp_phr >> 9) & 0x1FF);
+
+    return ((bitset<9>)folded_pc ^ (bitset<9>)folded_ghr ^ (bitset<9>)folded_phr);
+}
+
+/* Functions Called from ChampSim */
 void TAGE::initialize_branch_predictor() {
     bimodal_init();
+    
     bank_init(T0);
     bank_init(T1);
     bank_init(T2);
     bank_init(T3);
-}
 
-int fold_history() {
-    
-}
-
-int find_index(uint64_t pc, uint64_t ghr[3], int index_bank); {
-    int index = 0;
-    int mask = 0x3FF;
-    
-    switch (index_bank) {
-    case 0:
-        // index PC[9:0] ^ PC[19:10] ^ GHR[9:0]
-        index = (pc & mask) ^ ((pc >> 10) & mask) ^ (ghr[3] & mask);        
-        break;
-    case 1:
-    
-        break;
-    case 2:
-        break;
-    case 3:
-        break;
-    default:
-        break;
-    }
+    ghr.reset();
+    phr = 0;
 }
 
 uint8_t TAGE::predict_branch(uint64_t ip) {
@@ -96,12 +124,8 @@ void TAGE::last_branch_result(uint64_t ip, uint64_t branch_target, uint8_t taken
     if (branch_type == BRANCH_CONDITIONAL) {
         bimodal_update(ip, taken);
         
-        // Make space for the new taken bit.        
-        ghr[2] = (ghr[2] << 1) | (ghr[1] >> 63);
-        ghr[1] = (ghr[1] << 1) | (ghr[0] >> 63);
-        ghr[0] = (ghr[0] << 1) | taken;
-        ghr[2] &= 0x7; 
-        
+        ghr <<= 1;
+        ghr.set(0, taken);
         phr = ((phr << 1) ^ (ip & 0xFFFF)) & 0xFFFF;
     }
 }
