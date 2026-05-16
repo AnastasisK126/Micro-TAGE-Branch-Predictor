@@ -11,10 +11,10 @@ void TAGE::bimodal_init() {
 }
 
 // Returns Bimodal table prediction
-int TAGE::bimodal_predict(uint64_t pc) {
+uint8_t TAGE::bimodal_predict(uint64_t pc) {
     int index = pc % BIMODAL_ENTRIES;
 
-    return bimodal_table[index].prediction;
+    return ((uint8_t) (bimodal_table[index].prediction));
 }
 
 // Updates the table after the branch is evaluated,
@@ -50,80 +50,208 @@ void TAGE::bank_init(bank_t *table) {
 
 // Folds 20 bits of PC to 10 bits
 // PC[9:0] ^ PC[19:10]
-u_int64_t TAGE::PC_hash(u_int64_t pc) {
+int TAGE::PC_hash(u_int64_t pc) {
     u_int64_t mask = 0x3FF; // 10 lsb are 1
 
-    return ((pc & mask) ^ ((pc >> 10) & mask)); 
+    return ((int)((pc & mask) ^ ((pc >> 10) & mask))); 
+}
+
+// Converts 131 bit to 9 bit (int)
+int TAGE::convert_int(int start, bitset<131> source, int mask) {
+    return (static_cast<int>((source >> start).to_ulong() & mask));
 }
 
 // folds length bits of ghr to 10 bits
-bitset<131> TAGE::fold_ghr(int length) {
+int TAGE::fold_ghr(int length) {
     
-    bitset<131> mask = 0x3FF; // 10 lsb are 1
-    bitset<131> folded_history;
-    bitset<131> temp_ghr = ghr;
+    int mask = 0x3FF; // 10 lsb are 1
+    int folded_history = 0;
+    int temp_ghr;
     
     int times_fold = length / 10;
+    int start = 0;
 
     for (int i=0; i < times_fold; i++) {
+        temp_ghr = convert_int(start, ghr, mask);
         folded_history ^= (temp_ghr & mask);
-        temp_ghr >> 10;  
+        start+=10;  
     }
 
     return folded_history;
 }
 
 // Finds the index of each bank to be accessed.
-bitset<131> TAGE::find_index(uint64_t pc, int index_bank) {
+int TAGE::find_index(uint64_t pc, int index_bank) {
 
-    bitset<131> pc_hash = (bitset<131>) PC_hash(pc);
-    bitset<131> folded_history = fold_ghr(geo_lengths[index_bank]);    
+    int pc_hash = PC_hash(pc);
+    int folded_history = fold_ghr(geo_lengths[index_bank]);    
     
     return (pc_hash ^ folded_history); 
 }
 
-bitset<9> TAGE::calc_tag(uint64_t pc, int bank_index) {
-    bitset<131> temp_ghr = ghr;
+int TAGE::calc_tag(uint64_t pc, int bank_index) {
     uint16_t temp_phr = phr;
-    bitset<131> folded_ghr;
+    int folded_history = 0;
 
     // mask 0x1FF 9 lsb are 1 
     // folds 18 bits of pc to 9 bits
-    uint64_t folded_pc = (pc & 0x1FF) ^ ((pc >> 9) & 0x1FF);
+    int folded_pc = (int) ((pc & 0x1FF) ^ ((pc >> 9) & 0x1FF));
 
     // fold ghr to 9 bits
     int times_fold = geo_lengths[bank_index] / 9;
+    int start = 0;
+    int mask = 0x1FF;
+
     for (int i=0; i < times_fold; i++) {
-        folded_ghr ^= (temp_ghr & (bitset<131>) 0x1FF);
-        temp_ghr >> 9;  
+        int temp_ghr = convert_int(start, ghr, mask);
+        folded_history ^= (temp_ghr & mask);
+        start+=9;  
     }
 
-    uint16_t folded_phr = (temp_phr & 0x1FF) ^ ((temp_phr >> 9) & 0x1FF);
+    int folded_phr = (int) ((temp_phr & 0x1FF) ^ ((temp_phr >> 9) & 0x1FF));
 
-    return ((bitset<9>)folded_pc ^ (bitset<9>)folded_ghr ^ (bitset<9>)folded_phr);
+    return (folded_pc ^ folded_history ^ folded_phr);
+}
+
+// translates 3-bit counter of bank entry to T/NT
+uint8_t TAGE::comp_pred(int counter) {
+    return((uint8_t) (counter >= 4 ? TAKEN : NOT_TAKEN));
+}
+
+void TAGE::update_policy(uint8_t is_misspred) {
+    component_t *prov_comp = &tagged_tables[ProviderComp][table_indices[ProviderComp]];
+
+    // update prediction counter of provider bank
+    if(is_misspred) {
+        if (prov_comp->cnt_bits > 0) {
+            prov_comp->cnt_bits--;
+        }  
+    }
+    else {
+        if (prov_comp->cnt_bits < 7) {
+            prov_comp->cnt_bits++;
+        } 
+    }
+    
+    // update useful counter 
+    if (prime_pred != alt_pred) {
+        if(is_misspred) {
+            if (prov_comp->useful_bits > 0) 
+                prov_comp->useful_bits--;
+        }
+        else {
+            if (prov_comp->useful_bits < 3) {
+                prov_comp->useful_bits++;
+            } 
+        }
+    }
+
+    int msb_mask = 0b01;
+    int lsb_mask = 0b10;
+
+    // Useful bits reset, every 256K branches
+    if(clock == 262144) {
+        // Reset MSBs
+        if(clock_flip) {
+            for (int i=0; i < NUM_TABLES; i++) {
+                for (int j=0; j < ENTRIES_PER_BANK; j++) 
+                    tagged_tables[i][j].useful_bits &= msb_mask; 
+            }
+            clock_flip = 0;
+        }
+        // Reset LSBs
+        else {
+            for (int i=0; i < NUM_TABLES; i++) {
+                for (int j=0; j < ENTRIES_PER_BANK; j++)
+                    tagged_tables[i][j].useful_bits &= lsb_mask; 
+            }
+            clock_flip = 1;
+        }
+    
+        clock = 0;
+    }
+
+
 }
 
 /* Functions Called from ChampSim */
 void TAGE::initialize_branch_predictor() {
     bimodal_init();
     
-    bank_init(T0);
-    bank_init(T1);
-    bank_init(T2);
-    bank_init(T3);
+    bank_init(tagged_tables[0]);
+    bank_init(tagged_tables[1]);
+    bank_init(tagged_tables[2]);
+    bank_init(tagged_tables[3]);
 
     ghr.reset();
     phr = 0;
 }
 
 uint8_t TAGE::predict_branch(uint64_t ip) {
-    return (bimodal_predict(ip) == TAKEN) ? 1 : 0;
+    uint8_t prediction;
+    uint8_t bimodal_pred;
+    int curr_tag;
+
+    bimodal_pred = bimodal_predict(ip);
+
+    // Get hash for current pc  
+    table_indices[3] = find_index(ip, 3);
+    curr_tag = TAGE::calc_tag(ip, 3);
+    
+    // Prediction logic
+    if (curr_tag == tagged_tables[3][table_indices[3]].tag) {
+        prediction = comp_pred(tagged_tables[3][table_indices[3]].cnt_bits);
+        prime_pred = prediction;
+        alt_pred = bimodal_pred;
+        ProviderComp = 3;
+    } else {
+        prediction = bimodal_pred;
+        prime_pred = bimodal_pred;
+        ProviderComp = 4; 
+    }
+    
+    table_indices[3] = find_index(ip, 2);
+    curr_tag = TAGE::calc_tag(ip, 2);
+    
+    if (curr_tag == tagged_tables[2][table_indices[2]].tag) {
+        prediction = comp_pred(tagged_tables[2][table_indices[2]].cnt_bits);
+        prime_pred = prediction;
+        alt_pred = prime_pred;
+        ProviderComp = 2;
+    } 
+
+    table_indices[1] = find_index(ip, 1);
+    curr_tag = TAGE::calc_tag(ip, 1);
+    
+    if (curr_tag == tagged_tables[1][table_indices[1]].tag) {
+        prediction = comp_pred(tagged_tables[1][table_indices[1]].cnt_bits);
+        prime_pred = prediction;
+        alt_pred = prime_pred;
+        ProviderComp = 1;
+    } 
+
+    table_indices[0] = find_index(ip, 0);
+    curr_tag = TAGE::calc_tag(ip, 0);
+    
+    if (curr_tag == tagged_tables[0][table_indices[0]].tag) {
+        prediction = comp_pred(tagged_tables[0][table_indices[0]].cnt_bits);
+        prime_pred = prediction;
+        alt_pred = prime_pred;
+        ProviderComp = 0;
+    }
+
+    clock++;
+    return (prediction);
 }
 
 void TAGE::last_branch_result(uint64_t ip, uint64_t branch_target, uint8_t taken, uint8_t branch_type) {
     if (branch_type == BRANCH_CONDITIONAL) {
         bimodal_update(ip, taken);
         
+        uint8_t is_misspred = taken != prime_pred ? 1:0;
+
+
+
         ghr <<= 1;
         ghr.set(0, taken);
         phr = ((phr << 1) ^ (ip & 0xFFFF)) & 0xFFFF;
