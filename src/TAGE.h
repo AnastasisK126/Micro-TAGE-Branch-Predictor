@@ -5,6 +5,7 @@
 #include <math.h>
 #include <stdint.h>
 #include <bitset>
+#include <stdlib.h>
 
 using namespace std;
 
@@ -47,15 +48,17 @@ private:
     
     int clock = 0; // every 256K branches reset msb or lsb of all useful counters
     int clock_flip = 1; // when 1 msb reset, 0 lsb reset
-    int altBetterCount = 8;
-    int ProviderComp = 4;
+    int alt_better = 8; // 4-bit, may use alt pred for newly allocated entries
+    int provider_comp = 4;
     
     uint8_t alt_pred = 0;
     uint8_t prime_pred = 0;
+    uint8_t which_pred; // 1 prime_pred, 0 alt_pred
 
     int table_indices[NUM_TABLES];
+    int computed_tags[NUM_TABLES];
 
-    bimodal_t bimodal_table[BIMODAL_ENTRIES]; // (T4)
+    bimodal_t bimodal_table[BIMODAL_ENTRIES]; 
     component_t tagged_tables[NUM_TABLES][ENTRIES_PER_BANK];
 
 public:
@@ -67,7 +70,7 @@ public:
     void bimodal_init();
     uint8_t bimodal_predict(uint64_t pc);
     void bimodal_update(uint64_t pc, uint8_t taken);
-    void bank_init(bank_t *table);
+    void bank_init(component_t *table);
     
     int PC_hash(u_int64_t pc);
     int fold_ghr(int length);
@@ -75,7 +78,7 @@ public:
     int calc_tag(uint64_t pc, int bank_index);
     int convert_int(int start, bitset<131> source, int mask);
     uint8_t comp_pred(int counter);
-    void update_policy();
+    void update_policy(uint8_t is_misspred, uint8_t taken);
 };
 
 #endif
