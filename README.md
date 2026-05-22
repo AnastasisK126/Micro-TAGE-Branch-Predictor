@@ -1,3 +1,5 @@
+# TAGE Branch Predictor
+
 1. **Clone the repository:**
 clone the champsim repo
 
