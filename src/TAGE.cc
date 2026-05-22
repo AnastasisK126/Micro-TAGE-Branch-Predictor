@@ -51,7 +51,7 @@ int TAGE::PC_hash(u_int64_t pc) {
 int TAGE::convert_int(int start, bitset<131> source, int width) { 
     int result = 0;
 
-    // Safely extract bit by bit to avoid 64-bit overflow limits
+    // extract bit by bit to avoid 64-bit overflow
     for (int i = 0; i < width && (start + i) < 131; i++) {
         if (source[start + i]) {
             result |= (1 << i);
@@ -82,19 +82,19 @@ int TAGE::fold_ghr(int length) {
     return folded_history & 0x3FF;
 }
 
-// Finds the index of each bank to be accessed.
+// Finds the index of each bank to be accessed
 int TAGE::find_index(uint64_t pc, int index_bank) {
     int pc_hash = PC_hash(pc);
     int folded_history = fold_ghr(geo_lengths[index_bank]);    
     
-    // Severe Aliasing 
     // Shift the history based on the bank to separate table mappings
+    // To avoid aliasing
     int index = pc_hash ^ folded_history ^ (folded_history >> (index_bank + 1));
     
     // Mix in the path history to further scramble the index
     index ^= (phr & 0x3FF) ^ ((phr >> 3) & 0x3FF); 
     
-    // Ensure the index never goes out of bounds
+    // Keep lower 10 bits
     return index & 0x3FF;
 }
 
@@ -191,6 +191,7 @@ void TAGE::update_policy(uint8_t is_misspred, uint8_t taken) {
 
     // Allocate a new entry in case of missprediction
     if (is_misspred) {
+        // Find entries with useful counter 0
         for (int i = provider_comp-1; i >= 0; i--) {
             if (!tagged_tables[i][table_indices[i]].useful_bits) {
                 canditates_table[eviction_candidates] = i;
@@ -214,6 +215,7 @@ void TAGE::update_policy(uint8_t is_misspred, uint8_t taken) {
         }
         // More than 1 
         else {
+            // Non-deterministic allocation to prevent
             target_bank = canditates_table[0];
             int random_val = rand() % 100;
 
@@ -360,7 +362,6 @@ TAGE::~TAGE() {
     cout << "Bimodal Provider Count : " << bimodal_provider_count << endl;
     cout << "Tagged Provider Count  : " << tagged_provider_count << endl;
     
-    // Optional: Calculate the percentage safely
     uint64_t total = bimodal_provider_count + tagged_provider_count;
     if (total > 0) {
         double tagged_percent = (double)tagged_provider_count / total * 100.0;
