@@ -1,15 +1,14 @@
 # TAGE Branch Predictor
 
-1. **Clone the repository:**
-clone the champsim repo
+**Clone the repository:** \
+We used the Champsimp simulator to simulate the behavior of the predictor
 
 ```bash
 git clone https://github.com/ChampSim/ChampSim.git
 
 ```
 
-
-2. **Download dependencies:** \
+**Download dependencies:** \
 Navigate in the champsim folder \
 Download depedencies
 
@@ -20,8 +19,7 @@ vcpkg/vcpkg install
 
 ```
 
-
-3. **Configure the branch predictor:** \
+**Configure the branch predictor:** \
 Move the TAGE folder with the source files in the branch directory \
 Open the `champsim_config.json` \
 and make sure that the selected branch predictor is TAGE \
@@ -32,8 +30,7 @@ in line 31:
 
 ```
 
-
-4. **Build:** This may take some time.
+**Build:** This may take some time.
 
 ```bash
 ./config.sh champsim_config.json
@@ -41,11 +38,10 @@ make
 
 ```
 
-5. **Traces:** \
+**Traces:** \
 Download from [https://dpc3.compas.cs.stonybrook.edu/champsim-traces/speccpu/](https://dpc3.compas.cs.stonybrook.edu/champsim-traces/speccpu/)
 
-
-6. **Run:**
+**Run:**
 
 ```bash
 bin/champsim --warmup-instructions 20000000 --simulation-instructions 50000000 ~/path/to/traces/600.perlbench_s-210B.champsimtrace.xz
