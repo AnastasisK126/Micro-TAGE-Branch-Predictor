@@ -25,7 +25,7 @@ vcpkg/vcpkg install
 Move the TAGE folder with the source files in the branch directory \
 Open the `champsim_config.json` \
 and make sure that the selected branch predictor is TAGE \
-in line 31: \
+in line 31: 
 
 ```json
 "branch_predictor": "TAGE"
