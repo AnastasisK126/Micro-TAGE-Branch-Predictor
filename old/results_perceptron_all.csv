@@ -1,0 +1,27 @@
+Benchmark                         , Accuracy(%), MPKI
+400.perlbench-41B.champsimtrace.xz,       96.86,  6.451
+400.perlbench-50B.champsimtrace.xz,       96.65,  7.264
+401.bzip2-226B.champsimtrace.xz   ,       93.29,  7.865
+401.bzip2-277B.champsimtrace.xz   ,       89.8 , 16.13
+401.bzip2-38B.champsimtrace.xz    ,       95.92,  4.818
+401.bzip2-7B.champsimtrace.xz     ,       92.47, 11.31
+403.gcc-16B.champsimtrace.xz      ,       99.66,  0.663
+403.gcc-17B.champsimtrace.xz      ,       95.57,  9.606
+403.gcc-48B.champsimtrace.xz      ,       99.68,  0.7076
+429.mcf-184B.champsimtrace.xz     ,       91.55, 20.28
+429.mcf-192B.champsimtrace.xz     ,       91.35, 20.77
+429.mcf-217B.champsimtrace.xz     ,       98.24,  1.998
+429.mcf-22B.champsimtrace.xz      ,       97.97,  1.749
+429.mcf-51B.champsimtrace.xz      ,       93.49, 15.71
+445.gobmk-17B.champsimtrace.xz    ,       84.99, 26.59
+445.gobmk-2B.champsimtrace.xz     ,       87.19, 25.05
+445.gobmk-30B.champsimtrace.xz    ,       84.15, 28.95
+445.gobmk-36B.champsimtrace.xz    ,       84.86, 27.47
+458.sjeng-1088B.champsimtrace.xz  ,       88.87, 24.63
+458.sjeng-283B.champsimtrace.xz   ,       89.71, 22.96
+458.sjeng-31B.champsimtrace.xz    ,       89.35, 24.03
+458.sjeng-767B.champsimtrace.xz   ,       89.49, 23.31
+471.omnetpp-188B.champsimtrace.xz ,       96.35,  8.792
+473.astar-153B.champsimtrace.xz   ,       90.44, 12.48
+473.astar-359B.champsimtrace.xz   ,       91.73, 16.32
+473.astar-42B.champsimtrace.xz    ,       73.89, 49.24

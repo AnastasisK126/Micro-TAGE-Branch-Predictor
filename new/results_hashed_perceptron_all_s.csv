@@ -1,0 +1,16 @@
+Benchmark,Accuracy(%),MPKI
+602.gcc_s-1850B.champsimtrace.xz,99.95,0.124
+602.gcc_s-2226B.champsimtrace.xz,99.66,1.202
+602.gcc_s-2375B.champsimtrace.xz,95.26,9.992
+602.gcc_s-734B.champsimtrace.xz,99.82,0.4313
+619.lbm_s-2676B.champsimtrace.xz,97.91,0.3249
+619.lbm_s-2677B.champsimtrace.xz,97.04,0.5294
+619.lbm_s-3766B.champsimtrace.xz,99.9,0.0112
+619.lbm_s-4268B.champsimtrace.xz,97.09,0.5222
+620.omnetpp_s-141B.champsimtrace.xz,95.7,9.03
+620.omnetpp_s-874B.champsimtrace.xz,96.16,7.99
+625.x264_s-12B.champsimtrace.xz,99.68,0.1368
+625.x264_s-18B.champsimtrace.xz,99.55,0.1904
+625.x264_s-20B.champsimtrace.xz,99.33,0.2854
+625.x264_s-33B.champsimtrace.xz,99.5,0.1738
+625.x264_s-39B.champsimtrace.xz,94.62,2.416
