@@ -70,7 +70,7 @@ def main():
     ax1 = acc_pivot.plot(kind='bar', figsize=(14, 7), color=greyscale_colors, edgecolor='black', width=0.8)
     plt.title('Average Branch Prediction Accuracy per Benchmark', fontsize=16, fontweight='bold')
     plt.ylabel('Accuracy (%)', fontsize=14)
-    plt.xlabel('SPEC CPU2006', fontsize=14)
+    plt.xlabel('SPEC CPU2017', fontsize=14)
     plt.ylim(0, 100)
     plt.xticks(rotation=0, fontsize=12) 
     
@@ -87,7 +87,7 @@ def main():
     ax2 = mpki_pivot.plot(kind='bar', figsize=(14, 7), color=greyscale_colors, edgecolor='black', width=0.8)
     plt.title('Average MPKI per Benchmark', fontsize=16, fontweight='bold')
     plt.ylabel('MPKI', fontsize=14)
-    plt.xlabel('SPEC CPU2006', fontsize=14)
+    plt.xlabel('SPEC CPU2017', fontsize=14)
     plt.xticks(rotation=0, fontsize=12)
     
     # Move legend outside the plot
