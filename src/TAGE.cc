@@ -103,32 +103,36 @@ int TAGE::calc_tag(uint64_t pc, int bank_index) {
     int folded_history = 0;
     int length = geo_lengths[bank_index];
 
-    // folds 18 bits of pc to 9 bits
-    int folded_pc = (int) ((pc & 0x1FF) ^ ((pc >> 9) & 0x1FF));
+    // T3 and T2 use 8-bit tags, T1 and T0 use 9-bit tags
+    int tag_width = (bank_index >= 2) ? 8 : 9;
+    int mask = (1 << tag_width) - 1; // 0xFF for 8-bit, 0x1FF for 9-bit
 
-    // fold ghr to 9 bits
-    int times_fold = length / 9;
+    // fold pc 
+    int folded_pc = (int) ((pc & mask) ^ ((pc >> tag_width) & mask));
+
+    // fold ghr
+    int times_fold = length / tag_width;
     int start = 0;
 
     for (int i=0; i < times_fold; i++) {
-        int temp_ghr = convert_int(start, ghr, 9);
+        int temp_ghr = convert_int(start, ghr, tag_width);
         folded_history ^= temp_ghr;
-        start += 9;  
+        start += tag_width;  
     }
 
     // Catch the remaining bits
-    int remainder = length % 9;
+    int remainder = length % tag_width;
     if (remainder != 0) {
         int temp_ghr = convert_int(start, ghr, remainder);
         folded_history ^= temp_ghr;
     }
 
-    int folded_phr = (int) ((temp_phr & 0x1FF) ^ ((temp_phr >> 9) & 0x1FF));
+    int folded_phr = (int) ((temp_phr & mask) ^ ((temp_phr >> tag_width) & mask));
 
     // Better tag mixing to prevent aliasing
     int tag = folded_pc ^ folded_history ^ (folded_history >> 1) ^ folded_phr;
     
-    return tag & 0x1FF;
+    return tag & mask;
 }
 
 // translates 3-bit counter of bank entry to T/NT
@@ -216,6 +220,7 @@ void TAGE::update_policy(uint8_t is_misspred, uint8_t taken) {
         // More than 1 
         else {
             // Non-deterministic allocation to prevent
+            // ping-pong affect
             target_bank = canditates_table[0];
             int random_val = rand() % 100;
 
